@@ -1,4 +1,5 @@
 from collections import deque
+import numpy as np
 import os
 import pickle
 import random
@@ -45,8 +46,8 @@ class Trainer:
             self.update_checkpoints(epoch)
 
     def self_play_game(self, training_data_buffer, nnet):
+        num_possible_moves = Breakthrough.num_possible_moves()
         game = Breakthrough()
-        all_moves = Breakthrough.all_possible_moves()
         mcts = MCTS(nnet)
         states = []
         policies = []
@@ -54,7 +55,7 @@ class Trainer:
             policy = mcts.compute_policy(game)
             states.append(game.get_state())
             policies.append(policy)
-            chosen_move = random.choices(all_moves, weights=policy)[0]
+            chosen_move = np.random.choice(num_possible_moves, p=policy)
             game.play_move(chosen_move)
         result = game.get_result()
         for i, (state, policy) in enumerate(zip(states, policies)):
