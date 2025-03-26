@@ -4,6 +4,7 @@ import os
 import pickle
 import random
 import shutil
+import torch
 
 from arena import Arena
 from breakthrough import Breakthrough
@@ -27,7 +28,8 @@ class Trainer:
                 if os.path.isdir(directory) and d.startswith('latest'):
                     self.start_epoch = int(d.split('_')[-1]) + 1
                     self.training_data_buffer = pickle.loads(os.path.join(directory, TRAINING_DATA_FILE))
-                    self.nnet = Network(directory)
+                    model_path = os.path.join(directory, "model.pth")
+                    self.nnet = Network(path=model_path)
                     return
         self.start_epoch = 1
         self.training_data_buffer = deque(maxlen=MAX_REPLAY_BUFFER_SIZE)
@@ -40,6 +42,7 @@ class Trainer:
             training_data = list(self.training_data_buffer)
             random.shuffle(training_data)
             new_nnet = self.nnet.copy()
+
             new_nnet.train(training_data)
             if self.is_new_nnet_better(new_nnet):
                 self.nnet = new_nnet
@@ -79,15 +82,16 @@ class Trainer:
     def update_checkpoints(self, epoch):
         if epoch % CHECKPOINT_SAVE_FREQUENCY == 0:
             ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'epoch_{epoch:04}')
-            self.save_checkpoint(ckpt_dir)
+            self.save_checkpoint(ckpt_dir, epoch)
         latest_ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'latest_epoch_{epoch:04}')
         self.save_checkpoint(latest_ckpt_dir)
         prev_latest_ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'latest_epoch_{epoch - 1:04}')
         if os.path.exists(prev_latest_ckpt_dir):
             shutil.rmtree(prev_latest_ckpt_dir)
 
-    def save_checkpoint(self, training_data_buffer, nnet, directory):
+    def save_checkpoint(self, directory, epoch=None):
         training_data_file = os.path.join(directory, 'training_data.pkl')
         with open(training_data_file, 'wb') as f:
-            pickle.dump(training_data_buffer, f)
-        nnet.save(directory)
+            pickle.dump(self.training_data_buffer, f)
+        self.nnet.save(path=os.path.join(directory, "model.pth"), 
+                   iteration=epoch)
