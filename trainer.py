@@ -35,7 +35,7 @@ class Trainer:
         self.training_data_buffer = deque(maxlen=MAX_REPLAY_BUFFER_SIZE)
         self.nnet = Network()
 
-    def train(self, max_epochs, lr, weight_decay):
+    def train(self, max_epochs):
         for epoch in range(self.start_epoch, max_epochs + 1):
             for _ in range(NUM_EPISODES):
                 self.self_play_game(self.training_data_buffer, self.nnet)
@@ -43,8 +43,7 @@ class Trainer:
             random.shuffle(training_data)
             new_nnet = self.nnet.copy()
 
-            optimizer = torch.optim.Adam(new_nnet.nnet.parameters(), lr=lr, weight_decay=weight_decay)
-            new_nnet.train(optimizer, training_data)
+            new_nnet.train(training_data)
             if self.is_new_nnet_better(new_nnet):
                 self.nnet = new_nnet
             self.update_checkpoints(epoch)

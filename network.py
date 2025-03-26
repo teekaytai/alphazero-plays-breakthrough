@@ -31,14 +31,13 @@ class Network():
         torch.save(save_dict, path)
         print(f"Model saved to {path}")
     
-    def train(self, optimizer, training_data, batch_size=64, epochs=10):
+    def train(self, optimizer, training_data, batch_size=64, epochs=10, lr=0.001):
         """Train the network using examples from self-play.
             
         Args:
             training_data: List of (state, policy_target, value_target) tuples
             batch_size: Mini-batch size for training
             epochs: Number of epochs to train
-            lr: Learning rate
             weight_decay: L2 regularization strength
             
         Returns:
@@ -46,6 +45,7 @@ class Network():
         """
         self.nnet.train()  # Set model to training mode
             
+        optimizer = torch.optim.Adam(self.nnet.parameters(), lr=lr)
         # Extract training data
         states, policy_targets, value_targets = zip(*training_data)
         states = torch.FloatTensor(states)
