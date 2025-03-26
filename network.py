@@ -10,14 +10,13 @@ class Network():
     # Else, creates a neural network with randomly initialised weights.
     def __init__(self, path=None):
         self.nnet = bnnet()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.nnet.to(self.device)
 
         if path is not None and os.path.exists(path):
             checkpoint = torch.load(path)
             self.nnet.load_state_dict(checkpoint['model_state_dict'])
             print(f"Model loaded from {path}")
-
-        if torch.cuda.is_available():
-            self.nnet.cuda()
     
     def save(self, path="checkpoint.pth", optimizer=None, iteration=0):
         """Save the network and optimizer state to the specified path."""
@@ -31,7 +30,7 @@ class Network():
         torch.save(save_dict, path)
         print(f"Model saved to {path}")
     
-    def train(self, optimizer, training_data, batch_size=64, epochs=10, lr=0.001):
+    def train(self, training_data, batch_size=64, epochs=10, lr=0.001):
         """Train the network using examples from self-play.
             
         Args:
@@ -48,16 +47,17 @@ class Network():
         optimizer = torch.optim.Adam(self.nnet.parameters(), lr=lr)
         # Extract training data
         states, policy_targets, value_targets = zip(*training_data)
-        states = torch.FloatTensor(states)
-        policy_targets = torch.FloatTensor(policy_targets)
-        value_targets = torch.FloatTensor(value_targets).view(-1, 1)
+
+        states = torch.FloatTensor(states).to(self.device)
+        policy_targets = torch.FloatTensor(policy_targets).to(self.device)
+        value_targets = torch.FloatTensor(value_targets).view(-1, 1).to(self.device)
+
             
         # Calculate how many mini-batches we'll have
         n_samples = len(states)
         indices = torch.randperm(n_samples)
             
         total_loss = 0
-        batches_processed = 0
             
         for epoch in range(epochs):
             epoch_loss = 0
@@ -87,7 +87,6 @@ class Network():
                     
                 # Track losses
                 epoch_loss += loss.item()
-                batches_processed += 1
                 
             avg_epoch_loss = epoch_loss / (n_samples // batch_size)
             print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_epoch_loss:.4f}")
@@ -107,10 +106,8 @@ class Network():
         """
         self.nnet.eval()  # Set model to evaluation mode
         
-        # Convert state to tensor if it's not already
-        if not isinstance(state, torch.Tensor):
-            state = torch.FloatTensor(state)
-        
+        state = torch.FloatTensor(state).to(self.device)
+
         # Add batch dimension if not present
         if len(state.shape) == 3:
             state = state.unsqueeze(0)
@@ -119,7 +116,7 @@ class Network():
             policy_logits, value = self.nnet(state)
             
             # Convert policy logits to probabilities
-            policy = F.softmax(policy_logits, dim=1).squeeze(0)
+            policy = F.softmax(policy_logits, dim=1).squeeze(0).cpu()
             
             # Get scalar value
             value = value.item()
