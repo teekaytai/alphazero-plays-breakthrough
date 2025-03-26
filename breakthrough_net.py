@@ -10,7 +10,7 @@ class BreakThroughNet(nn.Module):
         self.board_width = N
         self.action_size = TOTAL_MOVES
         
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(128)
