@@ -1,17 +1,16 @@
 import numpy as np
 
-EMPTY = 0
+EMPTY = False
+PAWN = True
 P1 = 1
 P2 = -1
 N = 8
 FORWARD_MOVES = N * (N - 1)
 DIAG_MOVES = (N - 1) * (N - 1)
 TOTAL_MOVES = FORWARD_MOVES + 2 * DIAG_MOVES
-START_BOARD = np.zeros((N, N), dtype=int)
-START_BOARD[0] = P2
-START_BOARD[1] = P2
-START_BOARD[N - 2] = P1
-START_BOARD[N - 1] = P1
+START_BOARD = np.zeros((2, N, N), dtype=bool)
+START_BOARD[0, -2:] = PAWN
+START_BOARD[1, :2] = PAWN
 
 class Breakthrough:
     def __init__(self, turn=P1, p1_pawns=2*N, p2_pawns=2*N, winner=0, board=None):
@@ -28,25 +27,26 @@ class Breakthrough:
     # Returns the state of this game, from the perspective of the current player. Used
     # as input to the neural network
     def get_state(self):
-        state = self.board.flatten()
-        return state if self.turn == P1 else -np.flip(state)
+        return np.copy(self.board if self.turn == P1 else np.flip(self.board))
 
     # Returns an int that uniquely identifies the state of this game. Useful for hashing
     def get_id(self):
         h = 0
-        for x in self.board.reshape(-1):
-            h = 3 * h + int(x)
+        for r, c in np.ndindex(N, N):
+            h = 3 * h + int(self.board[0, r, c]) - int(self.board[1, r, c])
         return h
 
-    # Returns a vector of 1s and 0s denoting which moves are valid and invalid respectively in the
+    # Returns an array of bools denoting which moves are valid and invalid in the
     # current state from the current player's perspective
     def get_valid_moves(self):
-        valid_moves = np.empty(TOTAL_MOVES, dtype=int)
-        player_board = self.board if self.turn == P1 else np.flip(self.board)
-        pawns = player_board[1:] == self.turn
-        valid_forward_moves = np.logical_and(pawns, (player_board[:-1] == EMPTY))
-        valid_diag_left_moves = np.logical_and(pawns[:, 1:], (player_board[:-1, :-1] != self.turn))
-        valid_diag_right_moves = np.logical_and(pawns[:, :-1], (player_board[:-1, 1:] != self.turn))
+        curr_player_board, opp_player_board = self.board if self.turn == P1 else np.flip(self.board)
+        valid_moves = np.empty(TOTAL_MOVES, dtype=bool)
+        valid_forward_moves = np.logical_and(
+            curr_player_board[1:],
+            np.logical_not(np.logical_or(curr_player_board[:-1], opp_player_board[:-1]))
+        )
+        valid_diag_left_moves = np.logical_and(curr_player_board[1:, 1:], np.logical_not(curr_player_board[:-1, :-1]))
+        valid_diag_right_moves = np.logical_and(curr_player_board[1:, :-1], np.logical_not(curr_player_board[:-1, 1:]))
         valid_moves[:FORWARD_MOVES] = valid_forward_moves.reshape(-1)
         valid_moves[FORWARD_MOVES:-DIAG_MOVES] = valid_diag_left_moves.reshape(-1)
         valid_moves[-DIAG_MOVES:] = valid_diag_right_moves.reshape(-1)
@@ -54,30 +54,32 @@ class Breakthrough:
 
     # Applies the given move to this game, mutating it
     def play_move(self, move):
-        player_board = self.board if self.turn == P1 else np.flip(self.board)
+        curr_player_board, opp_player_board = self.board if self.turn == P1 else np.flip(self.board)
         if move < FORWARD_MOVES:
             # Forward move
             r, c = divmod(move, N)
-            player_board[r, c] = self.turn
-            player_board[r + 1, c] = EMPTY
+            curr_player_board[r, c] = PAWN
+            curr_player_board[r + 1, c] = EMPTY
         elif move < FORWARD_MOVES + DIAG_MOVES:
             # Diagonal left move
             r, c = divmod(move - FORWARD_MOVES, N - 1)
             if self.turn == P1:
-                p2_pawns -= player_board[r, c] == P2
+                p2_pawns -= int(opp_player_board[r, c])
             else:
-                p1_pawns -= player_board[r, c] == P1
-            player_board[r, c] = self.turn
-            player_board[r + 1, c + 1] = EMPTY
+                p1_pawns -= int(opp_player_board[r, c])
+            curr_player_board[r, c] = PAWN
+            curr_player_board[r + 1, c + 1] = EMPTY
+            opp_player_board[r, c] = EMPTY
         else:
             # Diagonal right move
             r, c = divmod(move - FORWARD_MOVES - DIAG_MOVES, N - 1)
             if self.turn == P1:
-                p2_pawns -= player_board[r, c + 1] == P2
+                p2_pawns -= int(opp_player_board[r, c + 1])
             else:
-                p1_pawns -= player_board[r, c + 1] == P1
-            player_board[r, c + 1] = self.turn
-            player_board[r + 1, c] = EMPTY
+                p1_pawns -= int(opp_player_board[r, c + 1])
+            curr_player_board[r, c + 1] = PAWN
+            curr_player_board[r + 1, c] = EMPTY
+            opp_player_board[r, c + 1] = EMPTY
         if r == 0 or self.p1_pawns == 0 or self.p2_pawns == 0:
             self.winner = self.turn
         self.turn = -self.turn
