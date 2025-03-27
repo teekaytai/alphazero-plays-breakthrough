@@ -121,7 +121,7 @@ class Network():
             # Get scalar value
             value = value.item()
             
-        return policy, value
+        return policy.detach().numpy(), value
 
     def copy(self):
         """Create a deep copy of this network with identical weights."""
