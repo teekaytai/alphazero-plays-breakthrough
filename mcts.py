@@ -1,7 +1,7 @@
 import numpy as np
 import collections
 import math
-from breakthrough import TOTAL_MOVES, Breakthrough
+from breakthrough import TOTAL_MOVES
 
 class MCTS:
     def __init__(self, nnet, c_puct = 1.0, num_iterations = 100):
@@ -9,6 +9,7 @@ class MCTS:
         self.root: MCTSNode = None
         self.c_puct = c_puct
         self.num_iterations = num_iterations
+        self.nn_cache = {}
 
     # Returns a vector describing the probabilities of choosing each move in the given game
     def compute_policy(self, game):
@@ -28,7 +29,7 @@ class MCTS:
 
         # Initialize root node
         self.root = MCTSNode(game)
-        policy, value = self.nnet.predict(self.root.game.get_state())
+        policy, value = self.cached_predict(game)
         self.root.expand(policy)
         self.root.backup(value)
 
@@ -38,7 +39,7 @@ class MCTS:
             if selected.game.is_game_over():
                 selected.backup(-terminal_reward)
             else:
-                policy, value = self.nnet.predict(selected.game.get_state())
+                policy, value = self.cached_predict(game)
                 selected.backup(value)
 
     def select_leaf(self):
@@ -48,6 +49,19 @@ class MCTS:
             node = node.try_add_child(best_move)
         # Break out when node is a new child
         return node
+    
+    def cached_predict(self, game):
+        game_state = game.get_state()
+        game_state_key = game_state.tobytes()
+
+        cached_result = self.nn_cache.get(game_state_key)
+        if cached_result is not None:
+            return cached_result
+        
+        result = self.nnet.predict(game_state)
+        self.nn_cache[game_state_key] = result
+        return result
+
 
 # To maintain that every MCTSNode has a parent
 class DummyNode:
@@ -128,3 +142,4 @@ class MCTSNode:
         new_game = self.game.with_move(move)
         self.children[move] = MCTSNode(new_game, move=move, parent=self)
         return self.children[move]
+    
