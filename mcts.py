@@ -3,25 +3,32 @@ import collections
 import math
 from breakthrough import TOTAL_MOVES
 
+NUM_ITERATIONS = 1000 # Default number of MCTS simulations per move
+C_BASE = 19652 # Determines how quickly exploration bonus decreases as visits accumulate
+C_INIT = 1.25 # Initial exploration weight before visits accumulate
 class MCTS:
-    def __init__(self, nnet, c_puct = 1.0, num_iterations = 100):
+    def __init__(self, nnet, c_base = C_BASE, c_init = C_INIT):
         self.nnet = nnet
-        self.root: MCTSNode = None
-        self.c_puct = c_puct
-        self.num_iterations = num_iterations
+        self.root = None
+        self.c_base = c_base
+        self.c_init = c_init
         self.nn_cache = {}
 
     # Returns a vector describing the probabilities of choosing each move in the given game
-    def compute_policy(self, game):
-        self.simulate(game, self.num_iterations)
+    def compute_policy(self, game, num_iterations = NUM_ITERATIONS):
+        self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
         return visit_counts / np.sum(visit_counts)
 
     # Returns the best move in the given game
-    def choose_best_move(self, game):
-        self.simulate(game, self.num_iterations)
+    def choose_best_move(self, game, num_iterations = NUM_ITERATIONS):
+        self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
         return np.argmax(visit_counts)
+    
+    @property
+    def c_puct(self):
+        return self.c_init + math.log((self.root.N + self.c_base + 1) / self.c_base)
 
     # Runs MCTS for the given number of iterations
     def simulate(self, game, num_iterations):
@@ -37,7 +44,7 @@ class MCTS:
             selected = self.select_leaf()
             
             if selected.game.is_game_over():
-                selected.backup(-terminal_reward)
+                selected.backup(-terminal_reward) # prev player won
             else:
                 policy, value = self.cached_predict(game)
                 selected.backup(value)
@@ -47,7 +54,6 @@ class MCTS:
         while node.is_expanded:
             best_move = node.best_child(self.c_puct)
             node = node.try_add_child(best_move)
-        # Break out when node is a new child
         return node
     
     def cached_predict(self, game):
@@ -142,4 +148,3 @@ class MCTSNode:
         new_game = self.game.with_move(move)
         self.children[move] = MCTSNode(new_game, move=move, parent=self)
         return self.children[move]
-    
