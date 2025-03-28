@@ -47,6 +47,7 @@ class MCTS:
                 selected.backup(-terminal_reward) # prev player won
             else:
                 policy, value = self.cached_predict(game)
+                selected.expand(policy)
                 selected.backup(value)
 
     def select_leaf(self):
@@ -135,7 +136,7 @@ class MCTSNode:
     
     def backup(self, value):
         node = self
-        while isinstance(node, MCTSNode):
+        while node.parent is not None:
             node.N += 1
             node.W += value
             node = node.parent
