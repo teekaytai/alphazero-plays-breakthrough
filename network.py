@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import os
 import torch
 import torch.nn.functional as F
@@ -53,10 +54,9 @@ class Network():
         # Extract training data
         states, policy_targets, value_targets = zip(*training_data)
 
-        states = torch.FloatTensor(states).to(self.device)
-        policy_targets = torch.FloatTensor(policy_targets).to(self.device)
-        value_targets = torch.FloatTensor(value_targets).view(-1, 1).to(self.device)
-
+        states = torch.FloatTensor(np.stack(states, axis=0)).to(self.device)
+        policy_targets = torch.FloatTensor(np.stack(policy_targets, axis=0)).to(self.device)
+        value_targets = torch.FloatTensor(np.array(value_targets)).view(-1, 1).to(self.device)
 
         # Calculate how many mini-batches we'll have
         n_samples = len(states)
