@@ -18,7 +18,7 @@ class MCTS:
     def compute_policy(self, game, num_iterations = NUM_ITERATIONS):
         self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
-        return visit_counts / self.N
+        return visit_counts / np.sum(visit_counts)
 
     # Returns the best move in the given game
     def choose_best_move(self, game, num_iterations = NUM_ITERATIONS):
