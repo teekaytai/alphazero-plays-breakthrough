@@ -25,10 +25,6 @@ class MCTS:
         self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
         return np.argmax(visit_counts)
-    
-    @property
-    def c_puct(self):
-        return self.c_init + math.log((self.root.N + self.c_base + 1) / self.c_base)
 
     # Runs MCTS for the given number of iterations
     def simulate(self, game, num_iterations):
@@ -53,7 +49,7 @@ class MCTS:
     def select_leaf(self):
         node = self.root
         while node.is_expanded:
-            best_move = node.best_child(self.c_puct)
+            best_move = node.best_child(self.c_init, self.c_base)
             node = node.try_add_child(best_move)
         return node
     
@@ -113,17 +109,18 @@ class MCTSNode:
     def child_Q(self):
         return self.child_W / (1.0 + self.child_N)
     
-    def child_U(self, c_puct):
+    def child_U(self, c_init, c_base):
+        c_puct = c_init + math.log((self.N + c_base + 1) / c_base)
         return c_puct * self.child_P * math.sqrt(self.N) / (1.0 + self.child_N)
 
-    def child_score(self, c_puct):
+    def child_score(self, c_init, c_base):
         # child_Q is from child's (other player's) perspective, negate to get curr player's perspective
-        return -self.child_Q() + self.child_U(c_puct)
+        return -self.child_Q() + self.child_U(c_init, c_base)
 
     # Returns the best move based on uct score
-    def best_child(self, c_puct):
+    def best_child(self, c_init, c_base):
         valid_moves = self.game.get_valid_moves()
-        scores = self.child_score(c_puct)
+        scores = self.child_score(c_init, c_base)
         scores[~valid_moves] = -np.inf # eliminates illegal moves
         best_move = np.argmax(scores)
         return best_move
