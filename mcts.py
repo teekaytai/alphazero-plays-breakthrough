@@ -18,7 +18,7 @@ class MCTS:
     def compute_policy(self, game, num_iterations = NUM_ITERATIONS):
         self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
-        return visit_counts / np.sum(visit_counts)
+        return visit_counts / self.N
 
     # Returns the best move in the given game
     def choose_best_move(self, game, num_iterations = NUM_ITERATIONS):
@@ -42,7 +42,7 @@ class MCTS:
             if selected.game.is_game_over():
                 selected.backup(-terminal_reward) # prev player won
             else:
-                policy, value = self.cached_predict(game)
+                policy, value = self.cached_predict(selected.game)
                 selected.expand(policy)
                 selected.backup(value)
 
@@ -122,7 +122,7 @@ class MCTSNode:
         valid_moves = self.game.get_valid_moves()
         scores = self.child_score(c_init, c_base)
         scores[~valid_moves] = -np.inf # eliminates illegal moves
-        best_move = np.argmax(scores)
+        best_move = np.argmax(scores) # breakthrough should always have a valid move
         return best_move
 
 
