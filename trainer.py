@@ -21,13 +21,15 @@ WIN_THRESHOLD = 0.55
 
 class Trainer:
     def __init__(self, resume_from_latest=True):
+        os.makedirs(CHECKPOINTS_DIR, exist_ok=True)
         self.arena = Arena(Breakthrough)
         if resume_from_latest:
             for d in os.listdir(CHECKPOINTS_DIR):
                 directory = os.path.join(CHECKPOINTS_DIR, d)
                 if os.path.isdir(directory) and d.startswith('latest'):
                     self.start_epoch = int(d.split('_')[-1]) + 1
-                    self.training_data_buffer = pickle.loads(os.path.join(directory, TRAINING_DATA_FILE))
+                    with open(os.path.join(directory, TRAINING_DATA_FILE), 'rb') as f:
+                        self.training_data_buffer = pickle.load(f)
                     model_path = os.path.join(directory, "model.pth")
                     self.nnet = Network(path=model_path)
                     return
@@ -82,8 +84,10 @@ class Trainer:
     def update_checkpoints(self, epoch):
         if epoch % CHECKPOINT_SAVE_FREQUENCY == 0:
             ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'epoch_{epoch:04}')
+            os.makedirs(ckpt_dir, exist_ok=True)
             self.save_checkpoint(ckpt_dir, epoch)
         latest_ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'latest_epoch_{epoch:04}')
+        os.makedirs(latest_ckpt_dir, exist_ok=True)
         self.save_checkpoint(latest_ckpt_dir)
         prev_latest_ckpt_dir = os.path.join(CHECKPOINTS_DIR, f'latest_epoch_{epoch - 1:04}')
         if os.path.exists(prev_latest_ckpt_dir):
@@ -93,5 +97,5 @@ class Trainer:
         training_data_file = os.path.join(directory, 'training_data.pkl')
         with open(training_data_file, 'wb') as f:
             pickle.dump(self.training_data_buffer, f)
-        self.nnet.save(path=os.path.join(directory, "model.pth"), 
+        self.nnet.save(path=os.path.join(directory, "model.pth"),
                    iteration=epoch)
