@@ -64,9 +64,9 @@ class Breakthrough:
             # Diagonal left move
             r, c = divmod(move - FORWARD_MOVES, N - 1)
             if self.turn == P1:
-                p2_pawns -= int(opp_player_board[r, c])
+                self.p2_pawns -= int(opp_player_board[r, c])
             else:
-                p1_pawns -= int(opp_player_board[r, c])
+                self.p1_pawns -= int(opp_player_board[r, c])
             curr_player_board[r, c] = PAWN
             curr_player_board[r + 1, c + 1] = EMPTY
             opp_player_board[r, c] = EMPTY
@@ -74,9 +74,9 @@ class Breakthrough:
             # Diagonal right move
             r, c = divmod(move - FORWARD_MOVES - DIAG_MOVES, N - 1)
             if self.turn == P1:
-                p2_pawns -= int(opp_player_board[r, c + 1])
+                self.p2_pawns -= int(opp_player_board[r, c + 1])
             else:
-                p1_pawns -= int(opp_player_board[r, c + 1])
+                self.p1_pawns -= int(opp_player_board[r, c + 1])
             curr_player_board[r, c + 1] = PAWN
             curr_player_board[r + 1, c] = EMPTY
             opp_player_board[r, c + 1] = EMPTY
