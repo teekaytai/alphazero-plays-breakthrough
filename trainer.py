@@ -71,12 +71,21 @@ class Trainer:
         mcts = MCTS(nnet)
         states = []
         policies = []
+        move_count = 0
+        
         while not game.is_game_over():
-            policy = mcts.compute_policy(game)
+            # Temperature varies based on move number
+            # 1 for first 25 moves, 0 afterward
+            temperature = 1.0 if move_count < 25 else 0.0
+            
+            policy = mcts.compute_policy(game, temperature=temperature)
             states.append(game.get_state())
             policies.append(policy)
+            
             chosen_move = np.random.choice(num_possible_moves, p=policy)
             game.play_move(chosen_move)
+            move_count += 1
+            
         result = game.get_result()
         for i, (state, policy) in enumerate(zip(states, policies)):
             value_target = result if i % 2 == 0 else -result
@@ -86,14 +95,19 @@ class Trainer:
         logger.info('Running evaluation games')
         curr_mcts = MCTS(self.nnet)
         new_mcts = MCTS(new_nnet)
-        curr_player = curr_mcts.choose_best_move
-        new_player = new_mcts.choose_best_move
+        
+        eval_temperature = 0.2
+        
+        curr_player = lambda game: curr_mcts.choose_best_move(game, temperature=eval_temperature)
+        new_player = lambda game: new_mcts.choose_best_move(game, temperature=eval_temperature)
+        
         new_player_wins = 0
         for i in trange(NUM_EVALUATION_GAMES):
             if i % 2 == 0:
                 new_player_wins += self.arena.play(new_player, curr_player) == 1
             else:
                 new_player_wins += self.arena.play(curr_player, new_player) == -1
+        
         win_rate = new_player_wins / NUM_EVALUATION_GAMES
         logger.info(f'Evaluation games completed, win rate: {win_rate}')
         return win_rate >= WIN_THRESHOLD
