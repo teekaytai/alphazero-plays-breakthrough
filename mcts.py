@@ -6,6 +6,7 @@ from breakthrough import TOTAL_MOVES
 NUM_ITERATIONS = 1000 # Default number of MCTS simulations per move
 C_BASE = 19652 # Determines how quickly exploration bonus decreases as visits accumulate
 C_INIT = 1.25 # Initial exploration weight before visits accumulate
+
 class MCTS:
     def __init__(self, nnet, c_base = C_BASE, c_init = C_INIT):
         self.nnet = nnet
@@ -15,16 +16,29 @@ class MCTS:
         self.nn_cache = {}
 
     # Returns a vector describing the probabilities of choosing each move in the given game
-    def compute_policy(self, game, num_iterations = NUM_ITERATIONS):
+    def compute_policy(self, game, temperature=1.0, num_iterations=NUM_ITERATIONS):
         self.simulate(game, num_iterations)
         visit_counts = self.root.child_N
-        return visit_counts / np.sum(visit_counts)
+        
+        # Deterministic policy (choose best move)
+        if temperature == 0:
+            best_moves = np.argwhere(visit_counts == np.max(visit_counts)).flatten()
+            policy = np.zeros_like(visit_counts)
+            policy[np.random.choice(best_moves)] = 1.0
+            return policy
+        else:
+            visit_counts = visit_counts ** (1. / temperature)
+            if np.sum(visit_counts) > 0:
+                return visit_counts / np.sum(visit_counts)
+            else:
+                # Fallback if all visit counts are zero (shouldn't happen normally)
+                valid_moves = game.get_valid_moves()
+                return valid_moves / np.sum(valid_moves)
 
     # Returns the best move in the given game
-    def choose_best_move(self, game, num_iterations = NUM_ITERATIONS):
-        self.simulate(game, num_iterations)
-        visit_counts = self.root.child_N
-        return np.argmax(visit_counts)
+    def choose_best_move(self, game, temperature=0, num_iterations=NUM_ITERATIONS):
+        policy = self.compute_policy(game, temperature, num_iterations)
+        return np.random.choice(len(policy), p=policy)
 
     # Runs MCTS for the given number of iterations
     def simulate(self, game, num_iterations):
@@ -64,7 +78,6 @@ class MCTS:
         result = self.nnet.predict(game_state)
         self.nn_cache[game_state_key] = result
         return result
-
 
 # To maintain that every MCTSNode has a parent
 class DummyNode:
@@ -124,7 +137,6 @@ class MCTSNode:
         scores[~valid_moves] = -np.inf # eliminates illegal moves
         best_move = np.argmax(scores) # breakthrough should always have a valid move
         return best_move
-
 
     # Expands the current node (just fills up prior probabilities)
     def expand(self, child_P):
