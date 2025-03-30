@@ -32,7 +32,8 @@ class MCTS:
                 return visit_counts / np.sum(visit_counts)
             else:
                 # Fallback if all visit counts are zero (shouldn't happen normally)
-                return np.ones_like(visit_counts) / len(visit_counts)
+                valid_moves = game.get_valid_moves()
+                return valid_moves / np.sum(valid_moves)
 
     # Returns the best move in the given game
     def choose_best_move(self, game, temperature=0, num_iterations=NUM_ITERATIONS):
