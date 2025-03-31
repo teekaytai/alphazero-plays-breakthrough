@@ -48,10 +48,8 @@ class Trainer:
             logger.info('Running self-play games')
             mcts = MCTS(self.nnet)
             for _ in trange(NUM_EPISODES):
-                logger.info('Starting self-play game...')
                 mcts.reset_tree()
                 self.self_play_game(self.training_data_buffer, mcts)
-                logger.info('Finishing self-play game...')
             logger.info('Self-play games completed')
 
             logger.info('Training neural network')
