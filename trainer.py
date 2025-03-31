@@ -100,15 +100,12 @@ class Trainer:
         
         eval_temperature = 0.2
         
-        curr_player = lambda game: curr_mcts.choose_best_move(game, temperature=eval_temperature)
-        new_player = lambda game: new_mcts.choose_best_move(game, temperature=eval_temperature)
-        
         new_player_wins = 0
         for i in trange(NUM_EVALUATION_GAMES):
             if i % 2 == 0:
-                new_player_wins += self.arena.play(new_player, curr_player) == 1
+                new_player_wins += self.arena.play(new_mcts, curr_mcts, eval_temperature) == 1
             else:
-                new_player_wins += self.arena.play(curr_player, new_player) == -1
+                new_player_wins += self.arena.play(curr_mcts, new_mcts, eval_temperature) == -1
         
         win_rate = new_player_wins / NUM_EVALUATION_GAMES
         logger.info(f'Evaluation games completed, win rate: {win_rate}')
