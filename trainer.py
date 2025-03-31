@@ -102,6 +102,8 @@ class Trainer:
         
         new_player_wins = 0
         for i in trange(NUM_EVALUATION_GAMES):
+            curr_mcts.reset_tree()
+            new_mcts.reset_tree()
             if i % 2 == 0:
                 new_player_wins += self.arena.play(new_mcts, curr_mcts, eval_temperature) == 1
             else:
