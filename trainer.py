@@ -46,8 +46,10 @@ class Trainer:
         for epoch in range(self.start_epoch, max_epochs + 1):
             logger.info(f'Starting epoch {epoch}/{max_epochs}')
             logger.info('Running self-play games')
+            mcts = MCTS(self.nnet)
             for _ in trange(NUM_EPISODES):
-                self.self_play_game(self.training_data_buffer, self.nnet)
+                mcts.reset_tree()
+                self.self_play_game(self.training_data_buffer, mcts)
             logger.info('Self-play games completed')
 
             logger.info('Training neural network')
@@ -65,10 +67,9 @@ class Trainer:
             self.update_checkpoints(epoch)
         logger.info('Agent training completed')
 
-    def self_play_game(self, training_data_buffer, nnet):
+    def self_play_game(self, training_data_buffer, mcts):
         num_possible_moves = Breakthrough.num_possible_moves()
         game = Breakthrough()
-        mcts = MCTS(nnet)
         states = []
         policies = []
         move_count = 0
@@ -84,6 +85,7 @@ class Trainer:
             
             chosen_move = np.random.choice(num_possible_moves, p=policy)
             game.play_move(chosen_move)
+            mcts.play_move(chosen_move)
             move_count += 1
             
         result = game.get_result()
@@ -98,15 +100,12 @@ class Trainer:
         
         eval_temperature = 0.2
         
-        curr_player = lambda game: curr_mcts.choose_best_move(game, temperature=eval_temperature)
-        new_player = lambda game: new_mcts.choose_best_move(game, temperature=eval_temperature)
-        
         new_player_wins = 0
         for i in trange(NUM_EVALUATION_GAMES):
             if i % 2 == 0:
-                new_player_wins += self.arena.play(new_player, curr_player) == 1
+                new_player_wins += self.arena.play(new_mcts, curr_mcts, eval_temperature) == 1
             else:
-                new_player_wins += self.arena.play(curr_player, new_player) == -1
+                new_player_wins += self.arena.play(curr_mcts, new_mcts, eval_temperature) == -1
         
         win_rate = new_player_wins / NUM_EVALUATION_GAMES
         logger.info(f'Evaluation games completed, win rate: {win_rate}')
