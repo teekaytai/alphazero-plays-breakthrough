@@ -3,7 +3,7 @@ import collections
 import math
 from breakthrough import TOTAL_MOVES
 
-NUM_ITERATIONS = 1000 # Default number of MCTS simulations per move
+NUM_ITERATIONS = 50 # Default number of MCTS simulations per move
 C_BASE = 19652 # Determines how quickly exploration bonus decreases as visits accumulate
 C_INIT = 1.25 # Initial exploration weight before visits accumulate
 
@@ -14,6 +14,15 @@ class MCTS:
         self.c_base = c_base
         self.c_init = c_init
         self.nn_cache = {}
+
+    def reset_tree(self):
+        self.root = None
+
+    def play_move(self, move):
+        if self.root is None:
+            return
+        
+        self.root = self.root.try_add_child(move)
 
     # Returns a vector describing the probabilities of choosing each move in the given game
     def compute_policy(self, game, temperature=1.0, num_iterations=NUM_ITERATIONS):
@@ -45,10 +54,13 @@ class MCTS:
         terminal_reward = 1
 
         # Initialize root node
-        self.root = MCTSNode(game)
-        policy, value = self.cached_predict(game)
-        self.root.expand(policy)
-        self.root.backup(value)
+        if self.root is None:
+            self.root = MCTSNode(game)
+        
+        if not self.root.is_expanded:
+            policy, value = self.cached_predict(game)
+            self.root.expand(policy)
+            self.root.backup(value)
 
         for _ in range(num_iterations):
             selected = self.select_leaf()

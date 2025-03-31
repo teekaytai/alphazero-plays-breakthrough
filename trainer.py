@@ -46,8 +46,12 @@ class Trainer:
         for epoch in range(self.start_epoch, max_epochs + 1):
             logger.info(f'Starting epoch {epoch}/{max_epochs}')
             logger.info('Running self-play games')
+            mcts = MCTS(self.nnet)
             for _ in trange(NUM_EPISODES):
-                self.self_play_game(self.training_data_buffer, self.nnet)
+                logger.info('Starting self-play game...')
+                mcts.reset_tree()
+                self.self_play_game(self.training_data_buffer, mcts)
+                logger.info('Finishing self-play game...')
             logger.info('Self-play games completed')
 
             logger.info('Training neural network')
@@ -65,10 +69,9 @@ class Trainer:
             self.update_checkpoints(epoch)
         logger.info('Agent training completed')
 
-    def self_play_game(self, training_data_buffer, nnet):
+    def self_play_game(self, training_data_buffer, mcts):
         num_possible_moves = Breakthrough.num_possible_moves()
         game = Breakthrough()
-        mcts = MCTS(nnet)
         states = []
         policies = []
         move_count = 0
@@ -84,6 +87,7 @@ class Trainer:
             
             chosen_move = np.random.choice(num_possible_moves, p=policy)
             game.play_move(chosen_move)
+            mcts.play_move(chosen_move)
             move_count += 1
             
         result = game.get_result()
