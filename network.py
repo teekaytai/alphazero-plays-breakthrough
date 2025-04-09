@@ -5,8 +5,6 @@ import torch
 import torch.nn.functional as F
 from tqdm import trange
 
-from breakthrough_net import BreakThroughNet as bnnet
-
 logger = logging.getLogger()
 
 # A wrapper class for the breakthrough neural network.
@@ -14,13 +12,14 @@ logger = logging.getLogger()
 class Network():
     # If directory is not None, loads the network saved in the directory.
     # Else, creates a neural network with randomly initialised weights.
-    def __init__(self, path=None):
+    def __init__(self, bnnet, path=None):
+        self.bnnet = bnnet
         self.nnet = bnnet()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.nnet.to(self.device)
 
         if path is not None and os.path.exists(path):
-            checkpoint = torch.load(path)
+            checkpoint = torch.load(path, map_location=self.device)
             self.nnet.load_state_dict(checkpoint['model_state_dict'])
             logger.debug(f"Model loaded from {path}")
 
@@ -130,6 +129,6 @@ class Network():
 
     def copy(self):
         """Create a deep copy of this network with identical weights."""
-        new_model = Network()
+        new_model = Network(self.bnnet)
         new_model.nnet.load_state_dict(self.nnet.state_dict())
         return new_model

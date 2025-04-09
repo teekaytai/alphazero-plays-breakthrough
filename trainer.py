@@ -9,6 +9,7 @@ from tqdm import trange
 
 from arena import Arena
 from breakthrough import Breakthrough
+from breakthrough_net import BreakThroughNet as bnnet
 from mcts import MCTS
 from network import Network
 
@@ -34,12 +35,12 @@ class Trainer:
                     with open(os.path.join(directory, TRAINING_DATA_FILE), 'rb') as f:
                         self.training_data_buffer = pickle.load(f)
                     model_path = os.path.join(directory, "model.pth")
-                    self.nnet = Network(path=model_path)
+                    self.nnet = Network(bnnet, path=model_path)
                     logger.info(f'Resuming training from latest checkpoint')
                     return
         self.start_epoch = 1
         self.training_data_buffer = deque(maxlen=MAX_REPLAY_BUFFER_SIZE)
-        self.nnet = Network()
+        self.nnet = Network(bnnet)
         logger.info(f'Training new agent')
 
     def train(self, max_epochs):
@@ -73,21 +74,21 @@ class Trainer:
         states = []
         policies = []
         move_count = 0
-        
+
         while not game.is_game_over():
             # Temperature varies based on move number
             # 1 for first 25 moves, 0 afterward
             temperature = 1.0 if move_count < 25 else 0.0
-            
+
             policy = mcts.compute_policy(game, temperature=temperature)
             states.append(game.get_state())
             policies.append(policy)
-            
+
             chosen_move = np.random.choice(num_possible_moves, p=policy)
             game.play_move(chosen_move)
             mcts.play_move(chosen_move)
             move_count += 1
-            
+
         result = game.get_result()
         for i, (state, policy) in enumerate(zip(states, policies)):
             value_target = result if i % 2 == 0 else -result
@@ -97,18 +98,18 @@ class Trainer:
         logger.info('Running evaluation games')
         curr_mcts = MCTS(self.nnet)
         new_mcts = MCTS(new_nnet)
-        
+
         eval_temperature = 0.2
-        
+
         new_player_wins = 0
         for i in trange(NUM_EVALUATION_GAMES):
             curr_mcts.reset_tree()
             new_mcts.reset_tree()
             if i % 2 == 0:
-                new_player_wins += self.arena.play(new_mcts, curr_mcts, eval_temperature) == 1
+                new_player_wins += self.arena.nnet_eval_play(new_mcts, curr_mcts, eval_temperature) == 1
             else:
-                new_player_wins += self.arena.play(curr_mcts, new_mcts, eval_temperature) == -1
-        
+                new_player_wins += self.arena.nnet_eval_play(curr_mcts, new_mcts, eval_temperature) == -1
+
         win_rate = new_player_wins / NUM_EVALUATION_GAMES
         logger.info(f'Evaluation games completed, win rate: {win_rate}')
         return win_rate >= WIN_THRESHOLD

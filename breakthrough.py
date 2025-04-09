@@ -99,3 +99,13 @@ class Breakthrough:
     # Returns 1 if player 1 won, or -1 if player 2 won. Breakthrough never ends in a draw
     def get_result(self):
         return self.winner
+
+    def __str__(self):
+        rows = []
+        for r in range(N):
+            row = [str(N - r) + ' ']
+            for c in range(N):
+                row.append('W' if self.board[0, r, c] else 'B' if self.board[1, r, c] else '.')
+            rows.append(''.join(row))
+        rows.append('  ' + ''.join(chr(ord('a') + i) for i in range(N)))
+        return '\n'.join(rows)
