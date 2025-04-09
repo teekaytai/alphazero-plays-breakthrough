@@ -24,6 +24,9 @@ class Breakthrough:
     def num_possible_moves():
         return TOTAL_MOVES
 
+    def copy(self):
+        return Breakthrough(self.turn, self.p1_pawns, self.p2_pawns, self.winner, np.copy(self.board))
+
     # Returns the state of this game, from the perspective of the current player. Used
     # as input to the neural network
     def get_state(self):
@@ -86,7 +89,7 @@ class Breakthrough:
 
     # Returns a new Breakthrough instance that is the result of playing the given move on this game
     def with_move(self, move):
-        new_game = Breakthrough(self.turn, self.p1_pawns, self.p2_pawns, self.winner, np.copy(self.board))
+        new_game = self.copy()
         new_game.play_move(move)
         return new_game
 
