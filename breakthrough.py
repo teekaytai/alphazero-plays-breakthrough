@@ -93,6 +93,30 @@ class Breakthrough:
         new_game.play_move(move)
         return new_game
 
+    def squares_to_move(self, src_square, dst_square):
+        r1, c1 = src_square
+        r2, c2 = dst_square
+        if self.turn == P1:
+            curr_player_board, opp_player_board = self.board
+        else:
+            curr_player_board, opp_player_board = np.flip(self.board)
+            r1 = N - r1 - 1
+            c1 = N - c1 - 1
+            r2 = N - r2 - 1
+            c2 = N - c2 - 1
+        if not curr_player_board[r1, c1]:
+            raise ValueError(f'Invalid move. Player has no pawn on source square.')
+        if r2 - r1 != -1 or abs(c1 - c2) > 1:
+            raise ValueError('Invalid move. Pawns can only move forwards straight ahead or diagonally 1 space.')
+        if curr_player_board[r2, c2] or (c1 == c2 and opp_player_board[r2, c2]):
+            raise ValueError(f'Invalid move. Destination square is blocked.')
+        if c1 == c2:
+            return r2 * N + c2
+        elif c1 > c2:
+            return FORWARD_MOVES + r2 * (N - 1) + c2
+        else:
+            return FORWARD_MOVES + DIAG_MOVES + r2 * (N - 1) + c2 - 1
+
     def is_game_over(self):
         return self.winner != 0
 
