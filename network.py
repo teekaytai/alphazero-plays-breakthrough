@@ -15,7 +15,8 @@ class Network():
     def __init__(self, bnnet, path=None):
         self.bnnet = bnnet
         self.nnet = bnnet()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device_train = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         self.nnet.to(self.device)
 
         if path is not None and os.path.exists(path):
@@ -47,15 +48,16 @@ class Network():
         Returns:
             Average loss over training
         """
+        self.nnet.to(self.device_train)
         self.nnet.train()  # Set model to training mode
 
         optimizer = torch.optim.Adam(self.nnet.parameters(), lr=lr)
         # Extract training data
         states, policy_targets, value_targets = zip(*training_data)
 
-        states = torch.FloatTensor(np.stack(states, axis=0)).to(self.device)
-        policy_targets = torch.FloatTensor(np.stack(policy_targets, axis=0)).to(self.device)
-        value_targets = torch.FloatTensor(np.array(value_targets)).view(-1, 1).to(self.device)
+        states = torch.FloatTensor(np.stack(states, axis=0)).to(self.device_train)
+        policy_targets = torch.FloatTensor(np.stack(policy_targets, axis=0)).to(self.device_train)
+        value_targets = torch.FloatTensor(np.array(value_targets)).view(-1, 1).to(self.device_train)
 
         # Calculate how many mini-batches we'll have
         n_samples = len(states)
@@ -108,6 +110,7 @@ class Network():
             policy: Probability distribution over actions
             value: Expected value of the state
         """
+        self.nnet.to(self.device)
         self.nnet.eval()  # Set model to evaluation mode
 
         state = torch.FloatTensor(state).to(self.device)
